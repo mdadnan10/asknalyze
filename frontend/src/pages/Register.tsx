@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from "axios";
 
 const roles = [
   'Frontend Developer',
@@ -132,6 +133,7 @@ const Register = () => {
     if (validateForm()) {
       try {
         // Add your API call here
+        const res = await axios.post("http://localhost:9091/api/auth/register", form);
         console.log('Form submitted:', form);
       } catch (error) {
         console.error('Registration failed:', error);
