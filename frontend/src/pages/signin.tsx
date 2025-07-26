@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
+import { toast } from 'react-toastify';
 
 const SignIn = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -46,8 +48,15 @@ const SignIn = () => {
     if (validateForm()) {
       try {
         const res = await axios.post("http://localhost:9091/api/auth/login", form);
+        if (res.data.success) {
+          toast.success(res.data.message);
+          // useNavigate('/dashboard'); // Redirect to dashboard on successful login
+        } else {
+          toast.error(res.data.message);
+        }
         console.log('Form submitted:', form);
       } catch (error) {
+        toast.error(error.response?.data?.message || 'Sign in failed. Please try again.');
         console.error('Sign in failed:', error);
       }
     }

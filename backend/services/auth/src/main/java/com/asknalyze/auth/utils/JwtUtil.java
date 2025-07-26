@@ -1,5 +1,6 @@
 package com.asknalyze.auth.utils;
 
+import com.asknalyze.auth.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -30,15 +31,24 @@ public class JwtUtil {
         logger.info("JWT key initialized");
     }
 
-    public String generateToken(String email) {
-        String token = Jwts.builder()
-                .setSubject(email)
+    public String generateToken(User user) {
+        JwtBuilder builder = Jwts.builder()
+                .setSubject(user.getEmail())
+                .claim("fullName", user.getFullName())
+                .claim("userId", user.getId())
+                .claim("experience", user.getExperience())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .signWith(key, SignatureAlgorithm.HS256);
 
-        logger.debug("Generated JWT token for email: {}", email);
+        if (user.getRole() != null && !user.getRole().isEmpty())
+            builder.claim("role", user.getRole());
+
+        if (user.getOrganization() != null && !user.getOrganization().isEmpty())
+            builder.claim("organization", user.getOrganization());
+
+        String token = builder.compact();
+        logger.debug("Generated JWT token for email: {}", user.getEmail());
         return token;
     }
 

@@ -1,9 +1,6 @@
 package com.asknalyze.auth.controller;
 
-import com.asknalyze.auth.dto.ApiResponse;
-import com.asknalyze.auth.dto.LoginRequest;
-import com.asknalyze.auth.dto.LoginResponse;
-import com.asknalyze.auth.dto.RegisterRequest;
+import com.asknalyze.auth.dto.*;
 import com.asknalyze.auth.service.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +39,31 @@ public class AuthController {
 
         if (!response.isSuccess()) {
             HttpStatus status = switch (response.getMessage()) {
-                case "User not found" -> HttpStatus.NOT_FOUND;
-                case "Invalid credentials" -> HttpStatus.UNAUTHORIZED;
+                case "You are not Registered" -> HttpStatus.NOT_FOUND;
+                case "Wrong Password" -> HttpStatus.UNAUTHORIZED;
                 default -> HttpStatus.BAD_REQUEST;
             };
             return ResponseEntity.status(status).body(response);
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/forgot-password/request")
+    public ResponseEntity<ApiResponse> requestOtp(@RequestBody RequestOtp dto) {
+        ApiResponse response = authService.sendOtp(dto);
+        return ResponseEntity.status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @PostMapping("/forgot-password/verify")
+    public ApiResponse verifyOtp(@RequestBody VerifyOtp dto) {
+        boolean success = authService.verifyOtp(dto);
+        return new ApiResponse(success ? "OTP verified" : "Invalid or expired OTP", success);
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public ApiResponse resetPassword(@RequestBody ResetPassword dto) {
+        return authService.resetPassword(dto);
     }
 
     @GetMapping()

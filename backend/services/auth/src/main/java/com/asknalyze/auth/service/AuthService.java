@@ -1,10 +1,9 @@
 package com.asknalyze.auth.service;
 
-import com.asknalyze.auth.dto.ApiResponse;
-import com.asknalyze.auth.dto.LoginRequest;
-import com.asknalyze.auth.dto.LoginResponse;
-import com.asknalyze.auth.dto.RegisterRequest;
+import com.asknalyze.auth.dto.*;
+import com.asknalyze.auth.model.OtpVerification;
 import com.asknalyze.auth.model.User;
+import com.asknalyze.auth.repository.OtpVerificationRepository;
 import com.asknalyze.auth.repository.UserRepository;
 import com.asknalyze.auth.utils.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.util.Random;
+
 @Service
 @Slf4j
 public class AuthService {
@@ -26,6 +28,12 @@ public class AuthService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OtpVerificationRepository otpVerificationRepository;
+
+    @Autowired
+    private MailService mailService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -69,17 +77,98 @@ public class AuthService {
 
         if (user == null) {
             log.warn("User not found: {}", request.getEmail());
-            return LoginResponse.failure("User not found");
+            return LoginResponse.failure("You are not Registered");
         }
 
         if (!bcryptPasswordEncoder.matches(request.getPassword(), user.getPassword())) {
-            log.warn("Invalid credentials for user: {}", request.getEmail());
-            return LoginResponse.failure("Invalid credentials");
+            log.warn("Wrong Password for user: {}", request.getEmail());
+            return LoginResponse.failure("Wrong Password");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtUtil.generateToken(user);
         log.info("User authenticated successfully: {}", user.getEmail());
         return LoginResponse.success(token);
+    }
+
+    public ApiResponse sendOtp(RequestOtp dto) {
+        log.info("Initiating OTP generation for email: {}", dto.getEmail());
+
+        boolean userExists = userRepository.existsByEmail(dto.getEmail());
+        if (!userExists) {
+            log.warn("OTP request failed: No registered user with email: {}", dto.getEmail());
+            return new ApiResponse("You are not registered with the provided email.", false);
+        }
+
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        OtpVerification record = new OtpVerification();
+        record.setEmail(dto.getEmail());
+        record.setOtp(otp);
+        record.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        record.setVerified(false);
+
+        otpVerificationRepository.save(record);
+        log.debug("OTP record saved for email: {} with expiry at {}", dto.getEmail(), record.getExpiresAt());
+
+        try {
+            mailService.sendOtpEmail(dto.getEmail(), otp);
+            log.info("OTP email sent to: {}", dto.getEmail());
+            return new ApiResponse("OTP sent to your registered email address.", true);
+        } catch (Exception e) {
+            log.error("Error sending OTP email to {}: {}", dto.getEmail(), e.getMessage());
+            return new ApiResponse("Failed to send OTP email. Please try again.", false);
+        }
+    }
+
+    public boolean verifyOtp(VerifyOtp dto) {
+        log.info("Verifying OTP for email: {}", dto.getEmail());
+
+        var recordOpt = otpVerificationRepository.findByEmailAndOtpAndVerifiedFalse(dto.getEmail(), dto.getOtp());
+        if (recordOpt.isEmpty()) {
+            log.warn("OTP not found or already used for email: {}", dto.getEmail());
+            return false;
+        }
+
+        var record = recordOpt.get();
+
+        if (record.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.warn("OTP expired for email: {}", dto.getEmail());
+            return false;
+        }
+
+        record.setVerified(true);
+        otpVerificationRepository.save(record);
+        log.info("OTP verified successfully for email: {}", dto.getEmail());
+        return true;
+    }
+
+    @Transactional
+    public ApiResponse resetPassword(ResetPassword dto) {
+        log.info("Attempting password reset for email: {}", dto.getEmail());
+
+        var latestOtp = otpVerificationRepository.findTopByEmailOrderByExpiresAtDesc(dto.getEmail());
+
+        if (latestOtp.isEmpty() || !latestOtp.get().isVerified()) {
+            log.warn("No OTP found for email: {}", dto.getEmail());
+            return new ApiResponse("OTP not verified or expired", false);
+        }
+
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            log.warn("Password mismatch for email: {}", dto.getEmail());
+            return new ApiResponse("Passwords do not match", false);
+        }
+
+        var userOpt = userRepository.findByEmail(dto.getEmail());
+        if (userOpt.isEmpty()) {
+            log.warn("User not found for password reset: {}", dto.getEmail());
+            return new ApiResponse("User not found", false);
+        }
+
+        User user = userOpt.get();
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userRepository.save(user);
+        log.info("Password reset successfully for email: {}", dto.getEmail());
+
+        return new ApiResponse("Password reset successfully", true);
     }
 
 }
