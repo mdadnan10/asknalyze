@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from "axios";
+import { toast } from 'react-toastify';
 
 const roles = [
   'Frontend Developer',
@@ -51,6 +53,7 @@ const organizations = [
 const experiences = Array.from({ length: 11 }, (_, i) => (i === 10 ? '10+ years' : `${i} years`));
 
 const Register = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -67,6 +70,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     experience: '',
+    organization: '',
     role: ''
   });
 
@@ -88,6 +92,7 @@ const Register = () => {
       password: '',
       confirmPassword: '',
       experience: '',
+      organization: '',
       role: ''
     };
 
@@ -111,7 +116,11 @@ const Register = () => {
       newErrors.experience = 'Please select your years of experience';
     }
 
-    if (!form.role) {
+    if (form.experience !== "0 years" && !form.organization) {
+      newErrors.organization = 'Please select your organization';
+    }
+
+    if (form.experience !== "0 years" && !form.role) {
       newErrors.role = 'Please select your role';
     }
 
@@ -131,9 +140,16 @@ const Register = () => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        // Add your API call here
+        const res = await axios.post("http://localhost:9091/api/auth/register", form);
+        if (res.data.success) {
+          toast.success(res.data.message);
+          navigate('/signin'); // Redirect to sign-in page on successful registration
+        } else {
+          toast.error(res.data.message);
+        }
         console.log('Form submitted:', form);
       } catch (error) {
+        toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
         console.error('Registration failed:', error);
       }
     }
@@ -276,7 +292,6 @@ const Register = () => {
                       onFocus={() => setShowOrgDropdown(true)}
                       className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900"
                       placeholder="Search organization"
-                      required
                     />
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
                       <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -299,9 +314,11 @@ const Register = () => {
                                     setOrgSearch(org);
                                     setShowOrgDropdown(false);
                                   }}
-                                  className={`px-3 sm:px-4 py-2 sm:py-3 text-sm hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
-                                    form.organization === org ? 'bg-blue-50' : ''
-                                  }`}
+                                  className={
+                                    `px-3 sm:px-4 py-2 sm:py-3 text-sm bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900 ${
+                                      form.organization === org ? 'bg-blue-50' : ''
+                                    }`
+                                  }
                                 >
                                   {org}
                                 </div>
@@ -326,6 +343,7 @@ const Register = () => {
                   placeholder="Enter your organization name"
                 />
               )}
+              {errors.organization && <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.organization}</p>}
             </div>
 
             {/* Role */}
@@ -351,7 +369,6 @@ const Register = () => {
                     value={form.role}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900 appearance-none"
-                    required
                   >
                     <option value="">Select your role</option>
                     {roles.map((role) => (

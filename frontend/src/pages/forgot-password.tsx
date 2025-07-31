@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from "axios";
+import { toast } from 'react-toastify';
 
 interface FormState {
   email: string;
@@ -16,6 +18,7 @@ interface FormErrors {
 }
 
 const ForgotPassword: React.FC = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
   const [form, setForm] = useState<FormState>({
     email: '',
@@ -110,18 +113,65 @@ const ForgotPassword: React.FC = () => {
     e.preventDefault();
     
     if (step === 1 && validateEmail()) {
-      // Send OTP to email
       console.log('Sending OTP to:', form.email);
+      toast.warn("Sending OTP to your email...");
+
+       try {
+        const res = await axios.post('http://localhost:9091/api/auth/forgot-password/request', {
+        email: form.email,
+      });
+
+    if (res.data.success) {
       setStep(2);
-      setCountdown(30); // Start countdown when OTP is initially sent
+      setCountdown(30);
+      toast.success(res.data.message); // Optional toast
+    } else {
+      toast.error(res.data.message);
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Something went wrong");
+  }
     } else if (step === 2 && validateOTP()) {
-      // Verify OTP
+      
       console.log('Verifying OTP:', form.otp);
+
+  try {
+    const res = await axios.post('http://localhost:9091/api/auth/forgot-password/verify', {
+      email: form.email,
+      otp: form.otp,
+    });
+
+    if (res.data.success) {
       setStep(3);
+      toast.success("OTP Verified");
+    } else {
+      toast.error("Invalid or expired OTP");
+    }
+  } catch (error) {
+    toast.error("OTP verification failed");
+  }
+
     } else if (step === 3 && validatePasswords()) {
-      // Reset password
+      
       console.log('Resetting password:', form.newPassword);
-      // Add your API call here
+
+  try {
+    const res = await axios.post('http://localhost:9091/api/auth/forgot-password/reset', {
+      email: form.email,
+      newPassword: form.newPassword,
+      confirmPassword: form.confirmPassword,
+    });
+
+    if (res.data.success) {
+      toast.success("Password reset successful");
+      navigate('/signin')
+    } else {
+      toast.error(res.data.message);
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Password reset failed");
+  }
+
     }
   };
 
