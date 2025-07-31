@@ -60,6 +60,12 @@ const Dashboard = () => {
                 Welcome, {user?.fullName || user?.name || user?.email || 'User'}!
               </span>
               <button
+                onClick={() => navigate('/update-profile')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+              >
+                Update Profile
+              </button>
+              <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
               >

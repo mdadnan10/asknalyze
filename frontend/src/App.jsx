@@ -8,6 +8,7 @@ import SignIn from './pages/signin.tsx';
 import Register from './pages/Register.tsx';
 import ForgotPassword from './pages/forgot-password.tsx';
 import Dashboard from './pages/Dashboard.tsx';
+import UpdateProfile from './pages/UpdateProfile.tsx';
 
 // Import components
 import ProtectedRoute from './components/ProtectedRoute.tsx';
@@ -36,6 +37,12 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/update-profile" element={
+            <ProtectedRoute>
+              <UpdateProfile />
             </ProtectedRoute>
           } />
           
