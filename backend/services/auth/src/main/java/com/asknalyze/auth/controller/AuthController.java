@@ -2,11 +2,14 @@ package com.asknalyze.auth.controller;
 
 import com.asknalyze.auth.dto.*;
 import com.asknalyze.auth.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -64,6 +67,35 @@ public class AuthController {
     @PostMapping("/forgot-password/reset")
     public ApiResponse resetPassword(@RequestBody ResetPassword dto) {
         return authService.resetPassword(dto);
+    }
+
+    @PatchMapping("/update-profile")
+    public ResponseEntity<ApiResponse> updateProfile(@RequestBody UpdateProfileRequest request,
+                                                    HttpServletRequest httpRequest) {
+        try {
+            // Get authenticated user's email from security context
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String authenticatedEmail = authentication.getName();
+            
+            logger.debug("Received update profile request from authenticated user: {}", authenticatedEmail);
+
+            request.email = authenticatedEmail;
+            
+            ApiResponse response = authService.updateProfile(request);
+
+            if (!response.isSuccess()) {
+                logger.error("Update profile failed for: {}", authenticatedEmail);
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            logger.info("Profile updated successfully for: {}", authenticatedEmail);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Error updating profile: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("Internal server error", false));
+        }
     }
 
     @GetMapping()

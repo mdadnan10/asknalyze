@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Random;
 
 @Service
@@ -169,6 +170,28 @@ public class AuthService {
         log.info("Password reset successfully for email: {}", dto.getEmail());
 
         return new ApiResponse("Password reset successfully", true);
+    }
+
+    @Transactional
+    public ApiResponse updateProfile(UpdateProfileRequest request) {
+        Optional<User> userInDb = Optional.empty();
+        if (userRepository.existsByEmail(request.email)) {
+            userInDb = userRepository.findByEmail(request.email);
+            log.info("User loaded {} ", request.email);
+        }
+
+        if (userInDb.isPresent()) {
+            log.info("Updating User for {}", request.email);
+            userInDb.get().setFullName(request.fullName);
+            userInDb.get().setRole(request.role);
+            userInDb.get().setOrganization(request.organization);
+            userInDb.get().setExperience(request.experience);
+            userRepository.save(userInDb.get());
+            log.info("Profile updated for {}", request.email);
+            return new ApiResponse("Profile Updated Successfully, Re-login to update.", true);
+        }
+
+        return new ApiResponse("Unable to update you", false);
     }
 
 }

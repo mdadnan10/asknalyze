@@ -102,19 +102,20 @@ const UpdateProfile: React.FC = () => {
       newErrors.fullName = 'Full name must be at least 2 characters long';
     }
 
-    // Role validation
-    if (!form.role.trim()) {
-      newErrors.role = 'Role is required';
-    }
-
-    // Organization validation
-    if (!form.organization.trim()) {
-      newErrors.organization = 'Organization is required';
-    }
-
     // Experience validation
     if (!form.experience.trim()) {
       newErrors.experience = 'Experience level is required';
+    }
+
+    // Role and Organization validation (only required if experience > 0)
+    const isZeroExperience = form.experience === '0 years';
+    
+    if (!isZeroExperience && !form.role.trim()) {
+      newErrors.role = 'Role is required';
+    }
+
+    if (!isZeroExperience && !form.organization.trim()) {
+      newErrors.organization = 'Organization is required';
     }
 
     setErrors(newErrors);
@@ -142,9 +143,22 @@ const UpdateProfile: React.FC = () => {
 
     try {
       const token = getToken();
-      const response = await axios.put(
+      
+      // Debug: Check if token exists
+      if (!token) {
+        toast.error('No authentication token found. Please sign in again.');
+        navigate('/signin');
+        return;
+      }
+      
+      console.log('Token exists:', !!token);
+      console.log('Token length:', token.length);
+      console.log('Token starts with:', token.substring(0, 20) + '...');
+      
+      const response = await axios.patch(
         'http://localhost:9091/api/auth/update-profile',
         {
+          email : user?.email,
           fullName: form.fullName.trim(),
           role: form.role,
           organization: form.organization.trim(),
@@ -153,6 +167,7 @@ const UpdateProfile: React.FC = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
         }
       );
@@ -166,8 +181,14 @@ const UpdateProfile: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Update profile error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
       if (error.response?.status === 401) {
         toast.error('Authentication failed. Please sign in again.');
+        navigate('/signin');
+      } else if (error.response?.status === 403) {
+        toast.error('Access forbidden. Please check your permissions or sign in again.');
         navigate('/signin');
       } else if (error.response?.status === 400) {
         toast.error(error.response.data.message || 'Invalid data provided');
@@ -312,7 +333,9 @@ const UpdateProfile: React.FC = () => {
               {/* Role */}
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="role" className="block text-xs sm:text-sm font-semibold text-gray-700">Role *</label>
+                  <label htmlFor="role" className="block text-xs sm:text-sm font-semibold text-gray-700">
+                    Role {form.experience !== '0 years' && '*'}
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
@@ -332,9 +355,11 @@ const UpdateProfile: React.FC = () => {
                       value={form.role}
                       onChange={handleChange}
                       className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900 appearance-none"
-                      required
+                      required={form.experience !== '0 years'}
                     >
-                      <option value="">Select your role</option>
+                      <option value="">
+                        {form.experience === '0 years' ? 'Select your role (optional)' : 'Select your role'}
+                      </option>
                       {roles.map((role) => (
                         <option key={role} value={role}>{role}</option>
                       ))}
@@ -353,8 +378,8 @@ const UpdateProfile: React.FC = () => {
                     value={form.role}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900"
-                    placeholder="Enter your role"
-                    required
+                    placeholder={form.experience === '0 years' ? 'Enter your role (optional)' : 'Enter your role'}
+                    required={form.experience !== '0 years'}
                   />
                 )}
                 {errors.role && (
@@ -365,7 +390,7 @@ const UpdateProfile: React.FC = () => {
               {/* Organization */}
               <div className="space-y-1.5 sm:space-y-2">
                 <label htmlFor="organization" className="block text-xs sm:text-sm font-semibold text-gray-700">
-                  Organization *
+                  Organization {form.experience !== '0 years' && '*'}
                 </label>
                 <input
                   id="organization"
@@ -374,8 +399,8 @@ const UpdateProfile: React.FC = () => {
                   value={form.organization}
                   onChange={handleChange}
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white hover:bg-gray-50 transition-all duration-200 text-gray-900"
-                  placeholder="Enter your organization or company"
-                  required
+                  placeholder={form.experience === '0 years' ? 'Enter your organization or company (optional)' : 'Enter your organization or company'}
+                  required={form.experience !== '0 years'}
                 />
                 {errors.organization && (
                   <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.organization}</p>
