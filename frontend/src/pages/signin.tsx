@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from "axios";
 import { toast } from 'react-toastify';
+import { login, isAuthenticated } from '../utils/auth.js';
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -16,6 +18,14 @@ const SignIn = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (isAuthenticated()) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [navigate, location]);
 
   const validateForm = () => {
     const newErrors = {
@@ -49,9 +59,19 @@ const SignIn = () => {
       try {
         const res = await axios.post("http://localhost:9091/api/auth/login", form);
         if (res.data.success) {
-          toast.success(res.data.message);
-          // useNavigate('/dashboard'); // Redirect to dashboard on successful login
+          // Store JWT token and user data using auth utility
+          if (res.data.token) {
+            login(res.data.token, res.data.user || { email: form.email });
+            toast.success(res.data.message);
+            
+            // Redirect to the intended page or dashboard
+            const from = location.state?.from?.pathname || '/dashboard';
+            navigate(from, { replace: true });
+          } else {
+            toast.error('No authentication token received');
+          }
         } else {
+          console.error('Login failed:', res.data.message);
           toast.error(res.data.message);
         }
         console.log('Form submitted:', form);

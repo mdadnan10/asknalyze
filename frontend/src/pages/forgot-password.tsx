@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { toast } from 'react-toastify';
+import { isAuthenticated } from '../utils/auth.js';
 
 interface FormState {
   email: string;
@@ -19,6 +20,14 @@ interface FormErrors {
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Redirect authenticated users to dashboard
+  React.useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
   const [form, setForm] = useState<FormState>({
     email: '',

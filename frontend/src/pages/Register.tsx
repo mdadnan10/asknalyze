@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { toast } from 'react-toastify';
+import { isAuthenticated } from '../utils/auth.js';
 
 const roles = [
   'Frontend Developer',
@@ -54,6 +55,14 @@ const experiences = Array.from({ length: 11 }, (_, i) => (i === 10 ? '10+ years'
 
 const Register = () => {
   const navigate = useNavigate();
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
+
   const [form, setForm] = useState({
     fullName: '',
     email: '',
