@@ -48,9 +48,34 @@ const ForgotPassword: React.FC = () => {
 
   const handleResendOTP = async () => {
     if (countdown === 0) {
-      // Add your OTP resend API call here
-      console.log('Resending OTP to:', form.email);
-      setCountdown(30); // Start 30 second countdown
+      try {
+        toast.info("Resending OTP...");
+        const res = await axios.post('http://localhost:9091/api/auth/forgot-password/request', {
+          email: form.email,
+        });
+
+        if (res.data.success) {
+          setCountdown(30);
+          toast.success("OTP sent successfully!");
+        } else {
+          toast.error(res.data.message);
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to resend OTP");
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      // Clear any errors when going back
+      setErrors({
+        email: '',
+        otp: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
     }
   };
 
@@ -114,7 +139,6 @@ const ForgotPassword: React.FC = () => {
     
     if (step === 1 && validateEmail()) {
       console.log('Sending OTP to:', form.email);
-      toast.warn("Sending OTP to your email...");
 
        try {
         const res = await axios.post('http://localhost:9091/api/auth/forgot-password/request', {
@@ -220,14 +244,33 @@ const ForgotPassword: React.FC = () => {
                 required
               />
               {errors.otp && <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.otp}</p>}
-              <div className="mt-3 text-center">
+              <div className="mt-4 text-center">
                 <button
                   type="button"
                   onClick={handleResendOTP}
                   disabled={countdown > 0}
-                  className={`text-xs sm:text-sm ${countdown > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-700'} font-semibold transition-colors duration-200`}
+                  className={`inline-flex items-center px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 ${
+                    countdown > 0 
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed' 
+                      : 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                  }`}
                 >
-                  {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
+                  {countdown > 0 ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Resend OTP in {countdown}s
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Resend OTP
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -351,21 +394,78 @@ const ForgotPassword: React.FC = () => {
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
           <div>
             <div className="flex justify-center mb-6">
-              <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-blue-600" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 40C31.0457 40 40 31.0457 40 20C40 8.9543 31.0457 0 20 0C8.9543 0 0 8.9543 0 20C0 31.0457 8.9543 40 20 40Z" fill="currentColor"/>
-                <path d="M20 32C26.6274 32 32 26.6274 32 20C32 13.3726 26.6274 8 20 8C13.3726 8 8 13.3726 8 20C8 26.6274 13.3726 32 20 32Z" fill="white"/>
-              </svg>
+              <div className="relative">
+                <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-blue-600" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 40C31.0457 40 40 31.0457 40 20C40 8.9543 31.0457 0 20 0C8.9543 0 0 8.9543 0 20C0 31.0457 8.9543 40 20 40Z" fill="currentColor"/>
+                  <path d="M20 32C26.6274 32 32 26.6274 32 20C32 13.3726 26.6274 8 20 8C13.3726 8 8 13.3726 8 20C8 26.6274 13.3726 32 20 32Z" fill="white"/>
+                </svg>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center mb-6 sm:mb-8">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                {[1, 2, 3].map((stepNumber) => (
+                  <React.Fragment key={stepNumber}>
+                    <div className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all duration-300 ${
+                      stepNumber < step 
+                        ? 'bg-green-500 border-green-500 text-white' 
+                        : stepNumber === step 
+                        ? 'bg-blue-600 border-blue-600 text-white' 
+                        : 'bg-gray-100 border-gray-300 text-gray-500'
+                    }`}>
+                      {stepNumber < step ? (
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <span className="text-xs sm:text-sm font-semibold">{stepNumber}</span>
+                      )}
+                    </div>
+                    {stepNumber < 3 && (
+                      <div className={`w-8 sm:w-12 h-0.5 transition-all duration-300 ${
+                        stepNumber < step ? 'bg-green-500' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            {/* Step Labels */}
+            <div className="flex justify-between mb-6 text-xs sm:text-sm text-gray-600 px-2">
+              <span className={step >= 1 ? 'text-blue-600 font-semibold' : ''}>Email</span>
+              <span className={step >= 2 ? 'text-blue-600 font-semibold' : ''}>Verify</span>
+              <span className={step >= 3 ? 'text-blue-600 font-semibold' : ''}>Reset</span>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {renderStepContent()}
 
-              <button
-                type="submit"
-                className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 mt-2 sm:mt-4"
-              >
-                {step === 1 ? "Send OTP" : step === 2 ? "Verify OTP" : "Reset Password"}
-              </button>
+              {/* Button Container */}
+              <div className="space-y-3 mt-6 sm:mt-8">
+                <button
+                  type="submit"
+                  className="w-full py-2.5 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  {step === 1 ? "Send OTP" : step === 2 ? "Verify OTP" : "Reset Password"}
+                </button>
+
+                {/* Back Button - Show for steps 2 and 3 */}
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="w-full py-2.5 sm:py-3 px-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 flex items-center justify-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Previous Step
+                  </button>
+                )}
+              </div>
 
               {/* Links */}
               <div className="text-center space-y-2">
