@@ -41,29 +41,127 @@ interface FormErrors {
 const AddInterview: React.FC = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
+  
+  // Auto-save keys for localStorage
+  const FORM_STORAGE_KEY = 'asknalyze_interview_form';
+  const COLLAPSED_STORAGE_KEY = 'asknalyze_collapsed_questions';
 
-  const [form, setForm] = useState<InterviewPracticeForm>({
-    companyName: user?.organization || '',
-    yearsOfExperience: user?.experience || '',
-    role: user?.role || '',
-    jobDescription: '',
-    questions: [{
-      id: '1',
-      question: '',
-      canAnswer: '',
-      answer: '',
-      isAnalyzed: false,
-      analysis: '',
-      correctAnswer: ''
-    }]
-  });
+  // Load saved form data or use defaults
+  const loadSavedForm = (): InterviewPracticeForm => {
+    try {
+      const savedForm = localStorage.getItem(FORM_STORAGE_KEY);
+      if (savedForm) {
+        const parsedForm = JSON.parse(savedForm);
+        // Merge with user data and ensure structure integrity
+        return {
+          companyName: parsedForm.companyName || user?.organization || '',
+          yearsOfExperience: parsedForm.yearsOfExperience || user?.experience || '',
+          role: parsedForm.role || user?.role || '',
+          jobDescription: parsedForm.jobDescription || '',
+          questions: parsedForm.questions && parsedForm.questions.length > 0 
+            ? parsedForm.questions 
+            : [{
+                id: '1',
+                question: '',
+                canAnswer: '',
+                answer: '',
+                isAnalyzed: false,
+                analysis: '',
+                correctAnswer: ''
+              }]
+        };
+      }
+    } catch (error) {
+      console.error('Error loading saved form data:', error);
+    }
+    
+    // Return default form if no saved data or error
+    return {
+      companyName: user?.organization || '',
+      yearsOfExperience: user?.experience || '',
+      role: user?.role || '',
+      jobDescription: '',
+      questions: [{
+        id: '1',
+        question: '',
+        canAnswer: '',
+        answer: '',
+        isAnalyzed: false,
+        analysis: '',
+        correctAnswer: ''
+      }]
+    };
+  };
 
+  // Load saved collapsed questions
+  const loadSavedCollapsedQuestions = (): Set<string> => {
+    try {
+      const savedCollapsed = localStorage.getItem(COLLAPSED_STORAGE_KEY);
+      if (savedCollapsed) {
+        const parsedCollapsed = JSON.parse(savedCollapsed);
+        return new Set(parsedCollapsed);
+      }
+    } catch (error) {
+      console.error('Error loading saved collapsed questions:', error);
+    }
+    return new Set();
+  };
+
+  const [form, setForm] = useState<InterviewPracticeForm>(loadSavedForm());
   const [isLoadingJD, setIsLoadingJD] = useState(false);
   const [isAnalyzingAnswer, setIsAnalyzingAnswer] = useState<string | null>(null);
   const [isGeneratingCorrectAnswer, setIsGeneratingCorrectAnswer] = useState<string | null>(null);
   const [isAnalyzingInterview, setIsAnalyzingInterview] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [collapsedQuestions, setCollapsedQuestions] = useState<Set<string>>(new Set());
+  const [collapsedQuestions, setCollapsedQuestions] = useState<Set<string>>(loadSavedCollapsedQuestions());
+
+  // Auto-save effect for form data
+  useEffect(() => {
+    try {
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
+    } catch (error) {
+      console.error('Error saving form data:', error);
+    }
+  }, [form, FORM_STORAGE_KEY]);
+
+  // Auto-save effect for collapsed questions
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(Array.from(collapsedQuestions)));
+    } catch (error) {
+      console.error('Error saving collapsed questions:', error);
+    }
+  }, [collapsedQuestions, COLLAPSED_STORAGE_KEY]);
+
+  // Show notification when saved data is loaded
+  useEffect(() => {
+    const savedForm = localStorage.getItem(FORM_STORAGE_KEY);
+    if (savedForm) {
+      try {
+        const parsedForm = JSON.parse(savedForm);
+        // Check if there's meaningful saved data
+        if (parsedForm.jobDescription || 
+            parsedForm.questions?.some((q: Question) => q.question || q.answer)) {
+          toast.info('Previous session data restored successfully', {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking saved data:', error);
+      }
+    }
+  }, []); // Only run on mount
+
+  // Clear saved data function
+  const clearSavedData = () => {
+    try {
+      localStorage.removeItem(FORM_STORAGE_KEY);
+      localStorage.removeItem(COLLAPSED_STORAGE_KEY);
+    } catch (error) {
+      console.error('Error clearing saved data:', error);
+    }
+  };
 
   const handleInputChange = (field: keyof InterviewPracticeForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -284,6 +382,9 @@ Requirements:
       // TODO: Implement API call to save and analyze entire interview
       await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // Clear saved data on successful analysis
+      clearSavedData();
+      
       toast.success('Interview analysis completed! Check your reports.');
       // Navigate to interview reports or show results
       navigate('/interview-reports');
@@ -373,22 +474,65 @@ Requirements:
         <div className="px-4 py-6 sm:px-0">
           {/* Page Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-8 text-white mb-8">
-            <div className="flex items-center mb-4">
-              <div className="bg-white/20 rounded-lg p-3 mr-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="bg-white/20 rounded-lg p-3 mr-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold mb-2">Interview Practice</h2>
+                  <p className="text-blue-100">Practice and analyze your interview performance with AI-powered insights.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-3xl font-bold mb-2">Interview Practice</h2>
-                <p className="text-blue-100">Practice and analyze your interview performance with AI-powered insights.</p>
+              
+              {/* Auto-save indicator and controls */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center bg-white/10 rounded-lg px-3 py-2">
+                  <svg className="w-4 h-4 text-green-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm text-white">Auto-saving</span>
+                </div>
+                {localStorage.getItem(FORM_STORAGE_KEY) && (
+                  <button
+                    onClick={() => {
+                      clearSavedData();
+                      setForm({
+                        companyName: user?.organization || '',
+                        yearsOfExperience: user?.experience || '',
+                        role: user?.role || '',
+                        jobDescription: '',
+                        questions: [{
+                          id: '1',
+                          question: '',
+                          canAnswer: '',
+                          answer: '',
+                          isAnalyzed: false,
+                          analysis: '',
+                          correctAnswer: ''
+                        }]
+                      });
+                      setCollapsedQuestions(new Set());
+                      toast.success('Form data cleared successfully');
+                    }}
+                    className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2"
+                    title="Clear all saved data and start fresh"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Clear Data</span>
+                  </button>
+                )}
               </div>
             </div>
             
             {/* Progress Indicator */}
             <div className="bg-white/10 rounded-lg p-4 mt-6">
               <div className="flex items-center justify-between text-sm">
-                <span>Complete your profile and start practicing</span>
+                <span>Complete your profile and start practicing • Data is automatically saved</span>
                 <div className="flex space-x-2">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                   <div className="w-2 h-2 bg-white/50 rounded-full"></div>
