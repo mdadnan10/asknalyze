@@ -9,6 +9,9 @@ import Register from './pages/Register.tsx';
 import ForgotPassword from './pages/forgot-password.tsx';
 import Dashboard from './pages/Dashboard.tsx';
 import UpdateProfile from './pages/UpdateProfile.tsx';
+import AddInterview from './pages/AddInterview.tsx';
+import InterviewReports from './pages/InterviewReports.tsx';
+import ResumeAnalysis from './pages/ResumeAnalysis.tsx';
 
 // Import components
 import ProtectedRoute from './components/ProtectedRoute.tsx';
@@ -43,6 +46,24 @@ function App() {
           <Route path="/update-profile" element={
             <ProtectedRoute>
               <UpdateProfile />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/add-interview" element={
+            <ProtectedRoute>
+              <AddInterview />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/interview-reports" element={
+            <ProtectedRoute>
+              <InterviewReports />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/resume-analysis" element={
+            <ProtectedRoute>
+              <ResumeAnalysis />
             </ProtectedRoute>
           } />
           
