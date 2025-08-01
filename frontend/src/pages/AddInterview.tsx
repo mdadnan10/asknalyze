@@ -54,7 +54,7 @@ const AddInterview: React.FC = () => {
         const parsedForm = JSON.parse(savedForm);
         // Merge with user data and ensure structure integrity
         return {
-          companyName: parsedForm.companyName || user?.organization || '',
+          companyName: parsedForm.companyName || '',
           yearsOfExperience: parsedForm.yearsOfExperience || user?.experience || '',
           role: parsedForm.role || user?.role || '',
           jobDescription: parsedForm.jobDescription || '',
@@ -77,7 +77,7 @@ const AddInterview: React.FC = () => {
     
     // Return default form if no saved data or error
     return {
-      companyName: user?.organization || '',
+      companyName: '',
       yearsOfExperience: user?.experience || '',
       role: user?.role || '',
       jobDescription: '',
@@ -203,7 +203,7 @@ const AddInterview: React.FC = () => {
 
     // Validate basic info
     if (!form.companyName.trim()) {
-      newErrors.companyName = 'Company name is required';
+      newErrors.companyName = 'Company interviewed for is required';
     }
     if (!form.yearsOfExperience.trim()) {
       newErrors.yearsOfExperience = 'Years of experience is required';
@@ -500,7 +500,7 @@ Requirements:
                     onClick={() => {
                       clearSavedData();
                       setForm({
-                        companyName: user?.organization || '',
+                        companyName: '',
                         yearsOfExperience: user?.experience || '',
                         role: user?.role || '',
                         jobDescription: '',
@@ -565,7 +565,7 @@ Requirements:
                     <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                    Company Name *
+                    Company Interviewed For *
                   </label>
                   <input
                     type="text"
@@ -575,7 +575,7 @@ Requirements:
                     className={`w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-blue-50 border-2 ${
                       errors.companyName ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500'
                     } rounded-lg focus:outline-none focus:ring-2 focus:bg-white transition-all duration-200 hover:border-gray-300 hover:bg-gradient-to-r hover:from-gray-100 hover:to-blue-100 text-gray-900 placeholder-gray-500`}
-                    placeholder="Enter your company name"
+                    placeholder="Enter the company you're interviewing for"
                     required
                   />
                   {errors.companyName && (
@@ -668,7 +668,7 @@ Requirements:
                     type="button"
                     onClick={generateJobDescription}
                     disabled={isLoadingJD || !form.role || !form.companyName}
-                    className="w-48 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-purple-400 disabled:to-indigo-400 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
+                    className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-purple-400 disabled:to-indigo-400 text-white px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
                   >
                     {isLoadingJD ? (
                       <>
@@ -676,14 +676,14 @@ Requirements:
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span>Generating...</span>
+                        <span className="whitespace-nowrap">Generating...</span>
                       </>
                     ) : (
                       <>
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        <span>Generate JD using AI</span>
+                        <span className="whitespace-nowrap">Generate JD using AI</span>
                       </>
                     )}
                   </button>
