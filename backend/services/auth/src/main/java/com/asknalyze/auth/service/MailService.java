@@ -1,5 +1,6 @@
 package com.asknalyze.auth.service;
 
+import com.asknalyze.auth.dto.MailRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -13,18 +14,20 @@ public class MailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendOtpEmail(String to, String otp) {
-        log.info("Sending OTP email to {}", to);
+    public void sendEmail(MailRequest request) {
+        String to = request.getSendTo();
+        String context = request.getContext();
+        log.info("Sending {} email to {}", context, to);
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
-            message.setSubject("OTP for Password Reset");
-            message.setText("Your OTP code is: " + otp + "\n\nThis will expire in 5 minutes.\n\n- Team Asknalyze");
+            message.setSubject(request.getSubject());
+            message.setText(request.getMessage() + "\n\n- Team Asknalyze");
             mailSender.send(message);
-            log.debug("Email dispatched successfully to {}", to);
+            log.debug("{} Email dispatched successfully to {}", context, to);
         } catch (Exception e){
-            log.error("Failed to send OTP email to {}. Reason: {}", to, e.getMessage(), e);
-            throw new RuntimeException("Failed to send OTP email");
+            log.error("Failed to send {} email to {}. Reason: {}", context,to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send" + context + "email");
         }
     }
 

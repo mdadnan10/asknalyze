@@ -66,6 +66,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password));
 
         userRepository.save(user);
+        sendMail(request.email, "REGISTER", request.fullName);
 
         logger.info("User registered successfully: {}", request.email);
         return new ApiResponse("User registered successfully", true);
@@ -111,7 +112,13 @@ public class AuthService {
         log.debug("OTP record saved for email: {} with expiry at {}", dto.getEmail(), record.getExpiresAt());
 
         try {
-            mailService.sendOtpEmail(dto.getEmail(), otp);
+            MailRequest mailRequest = new MailRequest();
+            mailRequest.setSendTo(dto.getEmail());
+            mailRequest.setSubject("OTP for Password Reset");
+            String message = "Your OTP code is: " + otp + "\n\nThis will expire in 5 minutes.";
+            mailRequest.setMessage(message);
+            mailRequest.setContext("OTP");
+            mailService.sendEmail(mailRequest);
             log.info("OTP email sent to: {}", dto.getEmail());
             return new ApiResponse("OTP sent to your registered email address.", true);
         } catch (Exception e) {
@@ -168,6 +175,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userRepository.save(user);
         log.info("Password reset successfully for email: {}", dto.getEmail());
+        sendMail(dto.getEmail(), "RESET", "");
 
         return new ApiResponse("Password reset successfully", true);
     }
@@ -192,6 +200,37 @@ public class AuthService {
         }
 
         return new ApiResponse("Unable to update you", false);
+    }
+
+    private void sendMail(String to, String context, String userName) {
+        try {
+            MailRequest mailRequest = new MailRequest();
+            mailRequest.setSendTo(to);
+            String subject = "";
+            String message = "";
+            if (context.equals("RESET")){
+                subject = "Password Reset Successfully";
+                message = "Congratulation! \n\nYour password was reset successfully. \n\nPlease login with new password.";
+            } else if (context.equals("REGISTER")) {
+                subject = "Welcome to Asknalyze!";
+                message = """
+                Hi %s,
+                
+                Thank you for registering at Asknalyze!
+                
+                Your account has been created successfully. You can now log in and start using our AI-powered tools.
+
+                Regards,
+                """.formatted(userName);
+            }
+            mailRequest.setSubject(subject);
+            mailRequest.setMessage(message);
+            mailRequest.setContext(context);
+            mailService.sendEmail(mailRequest);
+            log.info("{} email sent to: {}", context,to);
+        } catch (Exception e) {
+            log.error("Error sending {} email to {}: {}", context, to, e.getMessage());
+        }
     }
 
 }
