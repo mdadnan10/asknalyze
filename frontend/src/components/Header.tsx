@@ -1,11 +1,16 @@
 import React from 'react';
-import { logout, getUser } from '../utils/auth';
+import { logout, getCurrentUser } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-const Header = () => {
+interface HeaderProps {
+  additionalButtons?: React.ReactNode;
+  showWelcome?: boolean;
+}
+
+const Header: React.FC<HeaderProps> = ({ additionalButtons, showWelcome = true }) => {
   const navigate = useNavigate();
-  const user = getUser();
+  const user = getCurrentUser();
 
   const handleLogout = () => {
     logout();
@@ -26,11 +31,12 @@ const Header = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            {user && (
+            {showWelcome && user && (
               <span className="text-sm text-gray-700">
-                Welcome, {user.name || user.email || 'User'}!
+                Welcome, {user.fullName || user.name || user.email || 'User'}!
               </span>
             )}
+            {additionalButtons}
             <button
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
