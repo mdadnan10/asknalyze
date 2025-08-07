@@ -4,6 +4,10 @@ import { getCurrentUser } from '../utils/auth.js';
 import { toast } from 'react-toastify';
 import Header from '../components/Header';
 
+// API configuration
+const API_BASE_URL = 'http://localhost:9092';
+const AI_ANALYZE_ENDPOINT = `${API_BASE_URL}/api/ai/resume/analyze`;
+
 // Define types
 interface User {
   id?: string;
@@ -16,6 +20,7 @@ interface User {
 }
 
 interface AnalysisResult {
+  id?: string;
   skills: string[];
   experience: string[];
   education: string[];
@@ -39,6 +44,8 @@ const ResumeAnalysis: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [uploadType, setUploadType] = useState<'pdf' | 'word' | 'image'>('pdf');
+  const [analysisProgress, setAnalysisProgress] = useState<number>(0);
+  const [analysisStage, setAnalysisStage] = useState<string>('');
   
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,29 +129,79 @@ const ResumeAnalysis: React.FC = () => {
     }
     
     setIsAnalyzing(true);
+    setAnalysisProgress(10);
+    setAnalysisStage('Preparing your resume...');
     
     try {
-      // This is where you would implement your API call
-      // For now, we'll simulate a response after a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create form data to send file and job description
+      const formData = new FormData();
+      formData.append('file', file);
       
-      // Mock analysis result
-      const mockResult: AnalysisResult = {
-        skills: ['JavaScript', 'React', 'TypeScript', 'Node.js', 'API Development'],
-        experience: ['3 years as Frontend Developer', '2 years as Full Stack Engineer'],
-        education: ['Bachelor of Science in Computer Science'],
-        strengths: ['Strong frontend development skills', 'Experience with modern JavaScript frameworks'],
-        suggestions: ['Add more quantifiable achievements', 'Include specific project outcomes'],
-        jobFit: 85,
-        summary: 'Strong candidate with relevant technical skills and experience. Resume shows good alignment with typical software development roles. Consider adding more specifics about project impacts and quantifiable achievements to strengthen the application.'
-      };
+      if (jobDescription.trim()) {
+        formData.append('jobDescription', jobDescription);
+      }
       
-      setAnalysisResult(mockResult);
-      toast.success('Resume analyzed successfully!');
+      // Get the authentication token
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Authentication required. Please log in again.');
+        navigate('/signin');
+        return;
+      }
+      
+      setAnalysisProgress(30);
+      setAnalysisStage('Uploading resume...');
+      
+      // Call the API endpoint
+      const response = await fetch(AI_ANALYZE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      setAnalysisProgress(60);
+      setAnalysisStage('Processing with AI...');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to analyze resume');
+      }
+      
+      setAnalysisProgress(90);
+      setAnalysisStage('Finalizing results...');
+      
+      const responseData = await response.json();
+      
+      // Assuming the API returns data in the format {success, message, data}
+      if (responseData.success && responseData.data) {
+        setAnalysisResult(responseData.data);
+        setAnalysisProgress(100);
+        setAnalysisStage('Complete!');
+        toast.success('Resume analyzed successfully!');
+      } else {
+        throw new Error(responseData.message || 'Invalid response format');
+      }
     } catch (error) {
       console.error('Error analyzing resume:', error);
-      toast.error('Failed to analyze resume. Please try again.');
+      
+      if (error.message.includes('token') || error.message.includes('Authentication')) {
+        toast.error('Authentication expired. Please log in again.');
+        navigate('/signin');
+      } else if (error.message.includes('413') || error.message.includes('size')) {
+        toast.error('File too large. Please upload a smaller file (max 10MB).');
+      } else if (error.message.includes('format') || error.message.includes('type')) {
+        toast.error('Invalid file format. Please upload a supported file type.');
+      } else {
+        toast.error(`Failed to analyze resume: ${error.message || 'Unknown error'}`);
+      }
     } finally {
+      if (analysisProgress !== 100) {
+        setAnalysisProgress(0);
+        setAnalysisStage('');
+      }
       setIsAnalyzing(false);
     }
   };
@@ -221,6 +278,7 @@ const ResumeAnalysis: React.FC = () => {
           height: 100%;
           border-radius: 9999px;
           background: linear-gradient(to right, #3b82f6, #8b5cf6);
+          transition: width 0.5s ease;
         }
         
         /* Animations */
@@ -483,12 +541,28 @@ const ResumeAnalysis: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Analyzing Resume...
+                    {analysisStage || 'Analyzing Resume...'}
                   </div>
                 ) : (
                   'Analyze Resume'
                 )}
               </button>
+              
+              {/* Analysis Progress */}
+              {isAnalyzing && analysisProgress > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm text-indigo-700">{analysisStage}</span>
+                    <span className="text-sm font-medium text-indigo-700">{analysisProgress}%</span>
+                  </div>
+                  <div className="progress-container h-2">
+                    <div 
+                      className="progress-bar"
+                      style={{ width: `${analysisProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
